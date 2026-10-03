@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Анализ БПЛА: Рекомендации и Статистика</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%);
+            color: #e0e0e0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 {
+            text-align: center;
+            color: #ff6b6b;
+            margin-bottom: 10px;
+            font-size: 2.2em;
+        }
+        .subtitle { text-align: center; color: #888; margin-bottom: 30px; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+        .stat-value { font-size: 2.2em; font-weight: bold; color: #ff6b6b; margin-bottom: 5px; }
+        .stat-label { color: #888; font-size: 0.85em; }
+
+        .section {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+        .section-title {
+            color: #fff;
+            font-size: 1.3em;
+            margin-bottom: 20px;
+            padding-left: 15px;
+            border-left: 4px solid #3498db;
+        }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 25px; }
+        @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+
+        .chart-container { background: rgba(0,0,0,0.2); border-radius: 8px; padding: 10px; height: 350px; }
+        .chart-container.tall { height: 450px; }
+
+        .chart-summary {
+            background: rgba(52, 152, 219, 0.1);
+            border-left: 3px solid #3498db;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 6px;
+            font-size: 0.95em;
+            line-height: 1.6;
+            color: #d0d0d0;
+        }
+
+        .session-list {
+            max-height: 300px; overflow-y: auto; background: rgba(0,0,0,0.2);
+            border-radius: 8px; padding: 15px; margin-bottom: 20px;
+        }
+        .session-item {
+            display: flex; justify-content: space-between; padding: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 0.9em;
+        }
+        .session-item:last-child { border-bottom: none; }
+        .session-duration { color: #f39c12; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ АНАЛИЗ БЕСПИЛОТНОЙ ОПАСНОСТИ</h1>
+        <p class="subtitle">Автоматический отчет на основе данных Telegram-канала</p>
+
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-value">1312</div><div class="stat-label">Всего сообщений</div></div>
+            <div class="stat-card"><div class="stat-value">1267</div><div class="stat-label">Сбито БПЛА</div></div>
+            <div class="stat-card"><div class="stat-value">118</div><div class="stat-label">Заверш. сессий</div></div>
+            <div class="stat-card"><div class="stat-value">5.2 ч</div><div class="stat-label">Средняя тревога</div></div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">📅 Хронология оповещений</h2>
+            <div id="timeline" class="chart-container tall"></div>
+            <div class="chart-summary">📊 За период с 2025-07-25 по 2026-10-03 (436 дней) зафиксировано 1312 оповещений. В среднем 3.0 событий в день. Самые активные дни: 2026-05-20 (71 соб.), 2025-08-16 (30 соб.), 2025-07-25 (29 соб.).</div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">🕯️ Динамика по неделям (Свечной график)</h2>
+            <div id="candle" class="chart-container"></div>
+            <div class="chart-summary">📈 Проанализировано 63 недель. Средняя активность: 21 событий/неделю. Самая активная неделя: 2026-05-18 (93 соб.). Тренд: снижение активности.</div>
+        </div>
+
+        <div class="grid-2">
+            <div class="section">
+                <h2 class="section-title">⏰ Активность по часам</h2>
+                <div id="hourly" class="chart-container"></div>
+                <div class="chart-summary">⏰ Пик активности: 1:00 (99 оповещ.). Самые спокойные часы: 6:00, 15:00, 16:00. Ночь (22:00-06:00): 553 событий (42%), день: 759 (58%).</div>
+            </div>
+            <div class="section">
+                <h2 class="section-title">📊 По дням недели</h2>
+                <div id="weekday" class="chart-container"></div>
+                <div class="chart-summary">📅 Самый безопасный день: Вс (114 соб.). Самые опасные: Ср, Чт. Разница: 138 событий (121% больше).</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">📋 Детальная классификация событий</h2>
+            <div id="events" class="chart-container tall"></div>
+            <div class="chart-summary">📋 Всего категорий: 14. Доминирует: Внимание/Опасность / Основная (395 соб., 30%). Информационные сообщения: 412 (31%).</div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">⏱️ Длительность тревожных сессий</h2>
+            <div class="session-list">
+                <div class="session-item"><span>📅 2025-07-29</span><span>00:08 – 06:19</span><span class="session-duration">6.2 ч.</span></div><div class="session-item"><span>📅 2025-07-31</span><span>01:58 – 17:47</span><span class="session-duration">15.8 ч.</span></div><div class="session-item"><span>📅 2025-07-31</span><span>19:56 – 07:28</span><span class="session-duration">11.5 ч.</span></div><div class="session-item"><span>📅 2025-08-09</span><span>09:00 – 09:55</span><span class="session-duration">0.9 ч.</span></div><div class="session-item"><span>📅 2025-08-09</span><span>11:03 – 11:05</span><span class="session-duration">0.0 ч.</span></div><div class="session-item"><span>📅 2025-08-10</span><span>10:54 – 12:49</span><span class="session-duration">1.9 ч.</span></div><div class="session-item"><span>📅 2025-08-14</span><span>09:23 – 09:37</span><span class="session-duration">0.2 ч.</span></div><div class="session-item"><span>📅 2025-08-16</span><span>00:07 – 08:26</span><span class="session-duration">8.3 ч.</span></div><div class="session-item"><span>📅 2025-08-16</span><span>09:50 – 10:58</span><span class="session-duration">1.1 ч.</span></div><div class="session-item"><span>📅 2025-08-24</span><span>00:51 – 03:54</span><span class="session-duration">3.0 ч.</span></div><div class="session-item"><span>📅 2025-08-27</span><span>23:36 – 08:06</span><span class="session-duration">8.5 ч.</span></div><div class="session-item"><span>📅 2025-09-01</span><span>00:08 – 09:19</span><span class="session-duration">9.2 ч.</span></div><div class="session-item"><span>📅 2025-09-01</span><span>22:31 – 07:42</span><span class="session-duration">9.2 ч.</span></div><div class="session-item"><span>📅 2025-09-03</span><span>00:25 – 09:10</span><span class="session-duration">8.8 ч.</span></div><div class="session-item"><span>📅 2025-09-04</span><span>01:57 – 07:58</span><span class="session-duration">6.0 ч.</span></div><div class="session-item"><span>📅 2025-09-08</span><span>19:29 – 20:07</span><span class="session-duration">0.6 ч.</span></div><div class="session-item"><span>📅 2025-09-26</span><span>00:48 – 06:57</span><span class="session-duration">6.1 ч.</span></div><div class="session-item"><span>📅 2025-09-27</span><span>00:03 – 12:43</span><span class="session-duration">12.7 ч.</span></div><div class="session-item"><span>📅 2025-09-30</span><span>00:45 – 04:13</span><span class="session-duration">3.5 ч.</span></div><div class="session-item"><span>📅 2025-10-06</span><span>03:18 – 05:46</span><span class="session-duration">2.5 ч.</span></div><div class="session-item"><span>📅 2025-10-12</span><span>23:43 – 05:41</span><span class="session-duration">6.0 ч.</span></div><div class="session-item"><span>📅 2025-10-17</span><span>01:07 – 06:11</span><span class="session-duration">5.1 ч.</span></div><div class="session-item"><span>📅 2025-10-30</span><span>05:17 – 14:40</span><span class="session-duration">9.4 ч.</span></div><div class="session-item"><span>📅 2025-11-06</span><span>02:08 – 09:25</span><span class="session-duration">7.3 ч.</span></div><div class="session-item"><span>📅 2025-11-13</span><span>02:04 – 09:03</span><span class="session-duration">7.0 ч.</span></div><div class="session-item"><span>📅 2025-11-15</span><span>23:25 – 05:40</span><span class="session-duration">6.3 ч.</span></div><div class="session-item"><span>📅 2025-11-23</span><span>23:01 – 09:44</span><span class="session-duration">10.7 ч.</span></div><div class="session-item"><span>📅 2025-11-26</span><span>02:09 – 05:29</span><span class="session-duration">3.3 ч.</span></div><div class="session-item"><span>📅 2025-11-29</span><span>03:55 – 09:11</span><span class="session-duration">5.3 ч.</span></div><div class="session-item"><span>📅 2025-11-30</span><span>06:01 – 13:20</span><span class="session-duration">7.3 ч.</span></div>
+            </div>
+            <div id="sessChart" class="chart-container"></div>
+            <div class="chart-summary">️ Проанализировано 118 сессий. Средняя: 5.2 ч. Максимальная: 15.8 ч (2025-07-31). Короткие (<3ч): 31, средние (3-8ч): 63, длинные (>8ч): 24.</div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">💥 Сбитые БПЛА по дням</h2>
+            <div id="downed" class="chart-container"></div>
+            <div class="chart-summary">💥 Всего сбито: 1267 БПЛА за 25 дней. В среднем 50.7 сбитий/день. Рекорд: 340 БПЛА (2026-07-01).</div>
+        </div>
+    </div>
+
+    <script>
+        const data = {
+            hourly: [69, 99, 93, 89, 58, 46, 23, 37, 35, 57, 92, 76, 54, 33, 45, 30, 31, 42, 64, 48, 44, 48, 50, 49],
+            wd: [217, 135, 252, 241, 180, 173, 114],
+            wdNames: ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"],
+            evLabels: ["Сбит БПЛА / Основная", "Фиксация/Пролет / Основная", "Угроза масс.запуска / Основная", "info / Массовая атака", "info / Рекомендации", "info / Прочее", "info / Последствия атаки", "Внимание/Опасность / Основная", "Тревога / Основная", "info / Ожидание", "Отбой / Основная", "info / Соседние регионы", "info / Спокойная обстановка", "info / Официальные сводки"],
+            evVals: [135, 127, 26, 2, 81, 125, 2, 395, 22, 4, 195, 14, 183, 1],
+            daily: {"2025-07-25": {"count": 29, "downed": 43}, "2025-07-26": {"count": 11, "downed": 0}, "2025-07-29": {"count": 3, "downed": 0}, "2025-07-31": {"count": 5, "downed": 0}, "2025-08-01": {"count": 10, "downed": 18}, "2025-08-02": {"count": 2, "downed": 0}, "2025-08-03": {"count": 2, "downed": 0}, "2025-08-04": {"count": 1, "downed": 0}, "2025-08-06": {"count": 3, "downed": 0}, "2025-08-07": {"count": 3, "downed": 0}, "2025-08-08": {"count": 5, "downed": 0}, "2025-08-09": {"count": 16, "downed": 0}, "2025-08-10": {"count": 7, "downed": 8}, "2025-08-11": {"count": 3, "downed": 0}, "2025-08-12": {"count": 8, "downed": 3}, "2025-08-13": {"count": 2, "downed": 0}, "2025-08-14": {"count": 4, "downed": 0}, "2025-08-15": {"count": 1, "downed": 0}, "2025-08-16": {"count": 30, "downed": 9}, "2025-08-17": {"count": 2, "downed": 0}, "2025-08-18": {"count": 7, "downed": 0}, "2025-08-19": {"count": 2, "downed": 0}, "2025-08-21": {"count": 1, "downed": 0}, "2025-08-22": {"count": 5, "downed": 0}, "2025-08-23": {"count": 1, "downed": 0}, "2025-08-24": {"count": 2, "downed": 0}, "2025-08-25": {"count": 2, "downed": 0}, "2025-08-26": {"count": 3, "downed": 0}, "2025-08-27": {"count": 2, "downed": 0}, "2025-08-28": {"count": 5, "downed": 0}, "2025-08-30": {"count": 3, "downed": 0}, "2025-09-01": {"count": 7, "downed": 0}, "2025-09-02": {"count": 1, "downed": 0}, "2025-09-03": {"count": 3, "downed": 0}, "2025-09-04": {"count": 4, "downed": 0}, "2025-09-06": {"count": 2, "downed": 0}, "2025-09-07": {"count": 3, "downed": 0}, "2025-09-08": {"count": 6, "downed": 0}, "2025-09-09": {"count": 3, "downed": 0}, "2025-09-10": {"count": 1, "downed": 0}, "2025-09-11": {"count": 3, "downed": 0}, "2025-09-12": {"count": 1, "downed": 0}, "2025-09-15": {"count": 3, "downed": 0}, "2025-09-17": {"count": 2, "downed": 0}, "2025-09-18": {"count": 4, "downed": 0}, "2025-09-21": {"count": 1, "downed": 0}, "2025-09-22": {"count": 2, "downed": 0}, "2025-09-24": {"count": 3, "downed": 0}, "2025-09-25": {"count": 5, "downed": 0}, "2025-09-26": {"count": 3, "downed": 0}, "2025-09-27": {"count": 2, "downed": 0}, "2025-09-29": {"count": 2, "downed": 0}, "2025-09-30": {"count": 2, "downed": 0}, "2025-10-01": {"count": 1, "downed": 0}, "2025-10-02": {"count": 4, "downed": 0}, "2025-10-03": {"count": 1, "downed": 0}, "2025-10-06": {"count": 4, "downed": 0}, "2025-10-08": {"count": 3, "downed": 0}, "2025-10-09": {"count": 2, "downed": 0}, "2025-10-10": {"count": 2, "downed": 0}, "2025-10-11": {"count": 2, "downed": 0}, "2025-10-12": {"count": 1, "downed": 0}, "2025-10-13": {"count": 10, "downed": 0}, "2025-10-16": {"count": 3, "downed": 0}, "2025-10-17": {"count": 3, "downed": 0}, "2025-10-20": {"count": 4, "downed": 0}, "2025-10-21": {"count": 4, "downed": 0}, "2025-10-22": {"count": 3, "downed": 0}, "2025-10-23": {"count": 2, "downed": 0}, "2025-10-24": {"count": 4, "downed": 0}, "2025-10-25": {"count": 2, "downed": 0}, "2025-10-26": {"count": 1, "downed": 0}, "2025-10-27": {"count": 3, "downed": 0}, "2025-10-28": {"count": 2, "downed": 0}, "2025-10-29": {"count": 5, "downed": 2}, "2025-10-30": {"count": 4, "downed": 0}, "2025-10-31": {"count": 4, "downed": 0}, "2025-11-01": {"count": 1, "downed": 0}, "2025-11-03": {"count": 4, "downed": 1}, "2025-11-05": {"count": 3, "downed": 0}, "2025-11-06": {"count": 5, "downed": 0}, "2025-11-08": {"count": 2, "downed": 0}, "2025-11-09": {"count": 1, "downed": 0}, "2025-11-10": {"count": 3, "downed": 0}, "2025-11-11": {"count": 2, "downed": 0}, "2025-11-12": {"count": 6, "downed": 4}, "2025-11-13": {"count": 4, "downed": 0}, "2025-11-14": {"count": 3, "downed": 0}, "2025-11-15": {"count": 2, "downed": 0}, "2025-11-16": {"count": 1, "downed": 0}, "2025-11-17": {"count": 1, "downed": 0}, "2025-11-18": {"count": 2, "downed": 0}, "2025-11-19": {"count": 1, "downed": 0}, "2025-11-20": {"count": 3, "downed": 0}, "2025-11-21": {"count": 3, "downed": 0}, "2025-11-22": {"count": 2, "downed": 0}, "2025-11-23": {"count": 4, "downed": 0}, "2025-11-24": {"count": 5, "downed": 0}, "2025-11-25": {"count": 4, "downed": 0}, "2025-11-26": {"count": 6, "downed": 0}, "2025-11-27": {"count": 3, "downed": 0}, "2025-11-28": {"count": 8, "downed": 0}, "2025-11-29": {"count": 3, "downed": 0}, "2025-11-30": {"count": 2, "downed": 0}, "2025-12-01": {"count": 3, "downed": 0}, "2025-12-02": {"count": 3, "downed": 0}, "2025-12-03": {"count": 1, "downed": 0}, "2025-12-04": {"count": 19, "downed": 14}, "2025-12-05": {"count": 4, "downed": 0}, "2025-12-07": {"count": 2, "downed": 0}, "2025-12-08": {"count": 9, "downed": 0}, "2025-12-10": {"count": 1, "downed": 0}, "2025-12-11": {"count": 4, "downed": 0}, "2025-12-12": {"count": 2, "downed": 0}, "2025-12-13": {"count": 4, "downed": 0}, "2025-12-14": {"count": 2, "downed": 0}, "2025-12-15": {"count": 1, "downed": 0}, "2025-12-16": {"count": 1, "downed": 0}, "2025-12-17": {"count": 2, "downed": 0}, "2025-12-18": {"count": 2, "downed": 0}, "2025-12-19": {"count": 1, "downed": 0}, "2025-12-21": {"count": 1, "downed": 0}, "2025-12-22": {"count": 2, "downed": 0}, "2025-12-23": {"count": 11, "downed": 7}, "2025-12-24": {"count": 4, "downed": 0}, "2025-12-25": {"count": 11, "downed": 0}, "2025-12-26": {"count": 1, "downed": 0}, "2025-12-27": {"count": 1, "downed": 0}, "2025-12-28": {"count": 3, "downed": 0}, "2025-12-30": {"count": 1, "downed": 0}, "2026-01-02": {"count": 3, "downed": 0}, "2026-01-03": {"count": 1, "downed": 0}, "2026-01-04": {"count": 1, "downed": 0}, "2026-01-05": {"count": 2, "downed": 0}, "2026-01-06": {"count": 1, "downed": 0}, "2026-01-07": {"count": 4, "downed": 0}, "2026-01-08": {"count": 3, "downed": 0}, "2026-01-09": {"count": 1, "downed": 0}, "2026-01-10": {"count": 2, "downed": 0}, "2026-01-11": {"count": 1, "downed": 0}, "2026-01-12": {"count": 2, "downed": 0}, "2026-01-14": {"count": 20, "downed": 13}, "2026-01-15": {"count": 1, "downed": 0}, "2026-01-18": {"count": 4, "downed": 1}, "2026-01-19": {"count": 1, "downed": 0}, "2026-01-20": {"count": 1, "downed": 0}, "2026-01-21": {"count": 2, "downed": 0}, "2026-01-22": {"count": 2, "downed": 0}, "2026-01-25": {"count": 1, "downed": 0}, "2026-01-26": {"count": 3, "downed": 0}, "2026-01-27": {"count": 2, "downed": 0}, "2026-01-28": {"count": 2, "downed": 0}, "2026-01-29": {"count": 3, "downed": 0}, "2026-02-01": {"count": 5, "downed": 0}, "2026-02-02": {"count": 4, "downed": 42}, "2026-02-03": {"count": 1, "downed": 0}, "2026-02-04": {"count": 4, "downed": 0}, "2026-02-05": {"count": 1, "downed": 0}, "2026-02-07": {"count": 1, "downed": 0}, "2026-02-08": {"count": 2, "downed": 0}, "2026-02-09": {"count": 1, "downed": 0}, "2026-02-10": {"count": 2, "downed": 0}, "2026-02-11": {"count": 5, "downed": 0}, "2026-02-12": {"count": 1, "downed": 0}, "2026-02-13": {"count": 1, "downed": 0}, "2026-02-14": {"count": 5, "downed": 0}, "2026-02-16": {"count": 2, "downed": 0}, "2026-02-17": {"count": 4, "downed": 0}, "2026-02-18": {"count": 3, "downed": 0}, "2026-02-19": {"count": 7, "downed": 0}, "2026-02-20": {"count": 1, "downed": 0}, "2026-02-23": {"count": 3, "downed": 0}, "2026-02-24": {"count": 2, "downed": 0}, "2026-02-25": {"count": 1, "downed": 0}, "2026-02-26": {"count": 3, "downed": 0}, "2026-02-27": {"count": 4, "downed": 0}, "2026-02-28": {"count": 2, "downed": 0}, "2026-03-01": {"count": 1, "downed": 0}, "2026-03-02": {"count": 2, "downed": 0}, "2026-03-03": {"count": 1, "downed": 0}, "2026-03-04": {"count": 3, "downed": 0}, "2026-03-05": {"count": 2, "downed": 0}, "2026-03-06": {"count": 2, "downed": 0}, "2026-03-07": {"count": 3, "downed": 0}, "2026-03-08": {"count": 4, "downed": 0}, "2026-03-09": {"count": 2, "downed": 0}, "2026-03-10": {"count": 1, "downed": 0}, "2026-03-11": {"count": 1, "downed": 0}, "2026-03-12": {"count": 3, "downed": 0}, "2026-03-13": {"count": 8, "downed": 20}, "2026-03-14": {"count": 1, "downed": 0}, "2026-03-15": {"count": 3, "downed": 0}, "2026-03-16": {"count": 5, "downed": 0}, "2026-03-17": {"count": 8, "downed": 34}, "2026-03-18": {"count": 12, "downed": 27}, "2026-03-19": {"count": 24, "downed": 28}, "2026-03-20": {"count": 4, "downed": 0}, "2026-03-21": {"count": 2, "downed": 0}, "2026-03-22": {"count": 1, "downed": 0}, "2026-03-23": {"count": 2, "downed": 0}, "2026-03-24": {"count": 1, "downed": 0}, "2026-03-25": {"count": 2, "downed": 0}, "2026-03-26": {"count": 3, "downed": 0}, "2026-03-27": {"count": 3, "downed": 0}, "2026-03-28": {"count": 1, "downed": 0}, "2026-03-29": {"count": 4, "downed": 0}, "2026-03-30": {"count": 4, "downed": 0}, "2026-03-31": {"count": 1, "downed": 0}, "2026-04-01": {"count": 7, "downed": 1}, "2026-04-02": {"count": 5, "downed": 0}, "2026-04-03": {"count": 2, "downed": 0}, "2026-04-04": {"count": 2, "downed": 0}, "2026-04-05": {"count": 1, "downed": 0}, "2026-04-06": {"count": 3, "downed": 0}, "2026-04-07": {"count": 2, "downed": 0}, "2026-04-08": {"count": 1, "downed": 0}, "2026-04-09": {"count": 2, "downed": 0}, "2026-04-10": {"count": 3, "downed": 0}, "2026-04-11": {"count": 4, "downed": 0}, "2026-04-12": {"count": 1, "downed": 0}, "2026-04-13": {"count": 4, "downed": 0}, "2026-04-15": {"count": 1, "downed": 0}, "2026-04-16": {"count": 1, "downed": 0}, "2026-04-17": {"count": 1, "downed": 0}, "2026-04-18": {"count": 1, "downed": 0}, "2026-04-19": {"count": 1, "downed": 0}, "2026-04-20": {"count": 1, "downed": 0}, "2026-04-21": {"count": 1, "downed": 0}, "2026-04-23": {"count": 3, "downed": 0}, "2026-04-24": {"count": 2, "downed": 0}, "2026-04-25": {"count": 3, "downed": 0}, "2026-04-27": {"count": 2, "downed": 0}, "2026-04-28": {"count": 2, "downed": 0}, "2026-04-29": {"count": 1, "downed": 0}, "2026-04-30": {"count": 2, "downed": 0}, "2026-05-04": {"count": 2, "downed": 0}, "2026-05-05": {"count": 2, "downed": 0}, "2026-05-06": {"count": 1, "downed": 0}, "2026-05-07": {"count": 4, "downed": 0}, "2026-05-08": {"count": 7, "downed": 271}, "2026-05-09": {"count": 4, "downed": 0}, "2026-05-10": {"count": 1, "downed": 0}, "2026-05-11": {"count": 2, "downed": 0}, "2026-05-12": {"count": 2, "downed": 0}, "2026-05-13": {"count": 3, "downed": 0}, "2026-05-14": {"count": 2, "downed": 0}, "2026-05-15": {"count": 6, "downed": 0}, "2026-05-16": {"count": 8, "downed": 0}, "2026-05-17": {"count": 5, "downed": 8}, "2026-05-18": {"count": 9, "downed": 0}, "2026-05-19": {"count": 4, "downed": 0}, "2026-05-20": {"count": 71, "downed": 194}, "2026-05-21": {"count": 4, "downed": 0}, "2026-05-22": {"count": 3, "downed": 0}, "2026-05-23": {"count": 2, "downed": 0}, "2026-05-25": {"count": 2, "downed": 0}, "2026-05-26": {"count": 2, "downed": 0}, "2026-05-27": {"count": 1, "downed": 0}, "2026-05-28": {"count": 2, "downed": 0}, "2026-05-29": {"count": 1, "downed": 0}, "2026-05-30": {"count": 4, "downed": 0}, "2026-05-31": {"count": 5, "downed": 0}, "2026-06-01": {"count": 3, "downed": 0}, "2026-06-02": {"count": 2, "downed": 0}, "2026-06-03": {"count": 1, "downed": 0}, "2026-06-04": {"count": 1, "downed": 0}, "2026-06-05": {"count": 1, "downed": 0}, "2026-06-06": {"count": 1, "downed": 0}, "2026-06-07": {"count": 4, "downed": 0}, "2026-06-08": {"count": 3, "downed": 0}, "2026-06-09": {"count": 1, "downed": 0}, "2026-06-11": {"count": 3, "downed": 0}, "2026-06-12": {"count": 1, "downed": 0}, "2026-06-13": {"count": 1, "downed": 0}, "2026-06-14": {"count": 1, "downed": 0}, "2026-06-15": {"count": 4, "downed": 0}, "2026-06-16": {"count": 7, "downed": 0}, "2026-06-17": {"count": 3, "downed": 0}, "2026-06-18": {"count": 2, "downed": 0}, "2026-06-21": {"count": 7, "downed": 0}, "2026-06-22": {"count": 3, "downed": 0}, "2026-06-23": {"count": 3, "downed": 143}, "2026-06-24": {"count": 2, "downed": 0}, "2026-06-25": {"count": 4, "downed": 0}, "2026-06-26": {"count": 2, "downed": 0}, "2026-06-27": {"count": 1, "downed": 0}, "2026-06-28": {"count": 3, "downed": 0}, "2026-06-29": {"count": 8, "downed": 0}, "2026-06-30": {"count": 5, "downed": 0}, "2026-07-01": {"count": 11, "downed": 340}, "2026-07-02": {"count": 5, "downed": 0}, "2026-07-04": {"count": 2, "downed": 0}, "2026-07-05": {"count": 4, "downed": 0}, "2026-07-06": {"count": 4, "downed": 0}, "2026-07-07": {"count": 1, "downed": 0}, "2026-07-08": {"count": 3, "downed": 0}, "2026-07-09": {"count": 8, "downed": 0}, "2026-07-10": {"count": 4, "downed": 0}, "2026-07-11": {"count": 6, "downed": 0}, "2026-07-12": {"count": 3, "downed": 0}, "2026-07-13": {"count": 11, "downed": 0}, "2026-07-14": {"count": 2, "downed": 0}, "2026-07-15": {"count": 3, "downed": 0}, "2026-07-16": {"count": 7, "downed": 8}, "2026-07-17": {"count": 6, "downed": 0}, "2026-07-18": {"count": 2, "downed": 0}, "2026-07-19": {"count": 4, "downed": 0}, "2026-07-20": {"count": 3, "downed": 0}, "2026-07-21": {"count": 8, "downed": 0}, "2026-07-22": {"count": 13, "downed": 0}, "2026-07-23": {"count": 2, "downed": 0}, "2026-07-24": {"count": 6, "downed": 28}, "2026-07-25": {"count": 1, "downed": 0}, "2026-07-26": {"count": 2, "downed": 0}, "2026-07-27": {"count": 3, "downed": 0}, "2026-07-28": {"count": 5, "downed": 0}, "2026-07-30": {"count": 2, "downed": 0}, "2026-07-31": {"count": 3, "downed": 0}, "2026-08-03": {"count": 2, "downed": 0}, "2026-08-04": {"count": 3, "downed": 0}, "2026-08-05": {"count": 1, "downed": 0}, "2026-08-06": {"count": 4, "downed": 0}, "2026-08-07": {"count": 2, "downed": 0}, "2026-08-08": {"count": 1, "downed": 0}, "2026-08-10": {"count": 2, "downed": 0}, "2026-08-11": {"count": 1, "downed": 0}, "2026-08-13": {"count": 5, "downed": 0}, "2026-08-14": {"count": 2, "downed": 0}, "2026-08-15": {"count": 4, "downed": 0}, "2026-08-17": {"count": 1, "downed": 0}, "2026-08-19": {"count": 5, "downed": 0}, "2026-08-20": {"count": 3, "downed": 0}, "2026-08-21": {"count": 3, "downed": 0}, "2026-08-23": {"count": 5, "downed": 0}, "2026-08-24": {"count": 14, "downed": 0}, "2026-08-26": {"count": 1, "downed": 0}, "2026-08-27": {"count": 2, "downed": 0}, "2026-08-28": {"count": 1, "downed": 0}, "2026-08-29": {"count": 1, "downed": 0}, "2026-08-31": {"count": 1, "downed": 0}, "2026-09-03": {"count": 3, "downed": 0}, "2026-09-04": {"count": 3, "downed": 0}, "2026-09-05": {"count": 1, "downed": 0}, "2026-09-07": {"count": 2, "downed": 0}, "2026-09-08": {"count": 2, "downed": 0}, "2026-09-09": {"count": 2, "downed": 0}, "2026-09-10": {"count": 3, "downed": 0}, "2026-09-13": {"count": 3, "downed": 0}, "2026-09-14": {"count": 6, "downed": 0}, "2026-09-16": {"count": 4, "downed": 0}, "2026-09-17": {"count": 3, "downed": 0}, "2026-09-18": {"count": 3, "downed": 0}, "2026-09-19": {"count": 2, "downed": 0}, "2026-09-20": {"count": 2, "downed": 0}, "2026-09-21": {"count": 3, "downed": 0}, "2026-09-22": {"count": 1, "downed": 0}, "2026-09-23": {"count": 3, "downed": 0}, "2026-09-24": {"count": 2, "downed": 0}, "2026-09-25": {"count": 1, "downed": 0}, "2026-09-26": {"count": 13, "downed": 0}, "2026-09-28": {"count": 4, "downed": 0}, "2026-09-29": {"count": 2, "downed": 0}, "2026-09-30": {"count": 3, "downed": 0}, "2026-10-01": {"count": 4, "downed": 0}, "2026-10-03": {"count": 5, "downed": 0}},
+            downed: {"2025-07-25": 43, "2025-08-01": 18, "2025-08-10": 8, "2025-08-12": 3, "2025-08-16": 9, "2025-10-29": 2, "2025-11-03": 1, "2025-11-12": 4, "2025-12-04": 14, "2025-12-23": 7, "2026-01-14": 13, "2026-01-18": 1, "2026-02-02": 42, "2026-03-13": 20, "2026-03-17": 34, "2026-03-18": 27, "2026-03-19": 28, "2026-04-01": 1, "2026-05-08": 271, "2026-05-17": 8, "2026-05-20": 194, "2026-06-23": 143, "2026-07-01": 340, "2026-07-16": 8, "2026-07-24": 28},
+            candles: [{"date": "2025-07-21", "open": 0, "close": 40, "high": 29, "low": 11}, {"date": "2025-07-28", "open": 3, "close": 19, "high": 10, "low": 2}, {"date": "2025-08-04", "open": 4, "close": 31, "high": 16, "low": 1}, {"date": "2025-08-11", "open": 13, "close": 37, "high": 30, "low": 1}, {"date": "2025-08-18", "open": 9, "close": 9, "high": 7, "low": 1}, {"date": "2025-08-25", "open": 7, "close": 8, "high": 5, "low": 2}, {"date": "2025-09-01", "open": 11, "close": 9, "high": 7, "low": 1}, {"date": "2025-09-08", "open": 10, "close": 4, "high": 6, "low": 1}, {"date": "2025-09-15", "open": 5, "close": 5, "high": 4, "low": 1}, {"date": "2025-09-22", "open": 5, "close": 10, "high": 5, "low": 2}, {"date": "2025-09-29", "open": 5, "close": 5, "high": 4, "low": 1}, {"date": "2025-10-06", "open": 7, "close": 7, "high": 4, "low": 1}, {"date": "2025-10-13", "open": 10, "close": 6, "high": 10, "low": 3}, {"date": "2025-10-20", "open": 11, "close": 9, "high": 4, "low": 1}, {"date": "2025-10-27", "open": 10, "close": 9, "high": 5, "low": 1}, {"date": "2025-11-03", "open": 7, "close": 8, "high": 5, "low": 1}, {"date": "2025-11-10", "open": 11, "close": 10, "high": 6, "low": 1}, {"date": "2025-11-17", "open": 4, "close": 12, "high": 4, "low": 1}, {"date": "2025-11-24", "open": 15, "close": 16, "high": 8, "low": 2}, {"date": "2025-12-01", "open": 7, "close": 25, "high": 19, "low": 1}, {"date": "2025-12-08", "open": 10, "close": 12, "high": 9, "low": 1}, {"date": "2025-12-15", "open": 4, "close": 4, "high": 2, "low": 1}, {"date": "2025-12-22", "open": 17, "close": 16, "high": 11, "low": 1}, {"date": "2025-12-29", "open": 1, "close": 5, "high": 3, "low": 1}, {"date": "2026-01-05", "open": 7, "close": 7, "high": 4, "low": 1}, {"date": "2026-01-12", "open": 22, "close": 5, "high": 20, "low": 1}, {"date": "2026-01-19", "open": 4, "close": 3, "high": 2, "low": 1}, {"date": "2026-01-26", "open": 7, "close": 8, "high": 5, "low": 2}, {"date": "2026-02-02", "open": 9, "close": 4, "high": 4, "low": 1}, {"date": "2026-02-09", "open": 8, "close": 7, "high": 5, "low": 1}, {"date": "2026-02-16", "open": 9, "close": 8, "high": 7, "low": 1}, {"date": "2026-02-23", "open": 6, "close": 10, "high": 4, "low": 1}, {"date": "2026-03-02", "open": 6, "close": 11, "high": 4, "low": 1}, {"date": "2026-03-09", "open": 4, "close": 15, "high": 8, "low": 1}, {"date": "2026-03-16", "open": 25, "close": 31, "high": 24, "low": 1}, {"date": "2026-03-23", "open": 5, "close": 11, "high": 4, "low": 1}, {"date": "2026-03-30", "open": 12, "close": 10, "high": 7, "low": 1}, {"date": "2026-04-06", "open": 6, "close": 10, "high": 4, "low": 1}, {"date": "2026-04-13", "open": 5, "close": 4, "high": 4, "low": 1}, {"date": "2026-04-20", "open": 2, "close": 8, "high": 3, "low": 1}, {"date": "2026-04-27", "open": 5, "close": 2, "high": 2, "low": 1}, {"date": "2026-05-04", "open": 5, "close": 16, "high": 7, "low": 1}, {"date": "2026-05-11", "open": 7, "close": 21, "high": 8, "low": 2}, {"date": "2026-05-18", "open": 84, "close": 9, "high": 71, "low": 2}, {"date": "2026-05-25", "open": 5, "close": 12, "high": 5, "low": 1}, {"date": "2026-06-01", "open": 6, "close": 7, "high": 4, "low": 1}, {"date": "2026-06-08", "open": 4, "close": 6, "high": 3, "low": 1}, {"date": "2026-06-15", "open": 14, "close": 9, "high": 7, "low": 2}, {"date": "2026-06-22", "open": 8, "close": 10, "high": 4, "low": 1}, {"date": "2026-06-29", "open": 24, "close": 11, "high": 11, "low": 2}, {"date": "2026-07-06", "open": 8, "close": 21, "high": 8, "low": 1}, {"date": "2026-07-13", "open": 16, "close": 19, "high": 11, "low": 2}, {"date": "2026-07-20", "open": 24, "close": 11, "high": 13, "low": 1}, {"date": "2026-07-27", "open": 8, "close": 5, "high": 5, "low": 2}, {"date": "2026-08-03", "open": 6, "close": 7, "high": 4, "low": 1}, {"date": "2026-08-10", "open": 3, "close": 11, "high": 5, "low": 1}, {"date": "2026-08-17", "open": 6, "close": 11, "high": 5, "low": 1}, {"date": "2026-08-24", "open": 15, "close": 4, "high": 14, "low": 1}, {"date": "2026-08-31", "open": 1, "close": 7, "high": 3, "low": 1}, {"date": "2026-09-07", "open": 6, "close": 6, "high": 3, "low": 2}, {"date": "2026-09-14", "open": 10, "close": 10, "high": 6, "low": 2}, {"date": "2026-09-21", "open": 7, "close": 16, "high": 13, "low": 1}, {"date": "2026-09-28", "open": 9, "close": 9, "high": 5, "low": 2}],
+            sessions: [{"date": "2025-07-29", "start": "00:08", "end": "06:19", "duration_hours": 6.18}, {"date": "2025-07-31", "start": "01:58", "end": "17:47", "duration_hours": 15.81}, {"date": "2025-07-31", "start": "19:56", "end": "07:28", "duration_hours": 11.54}, {"date": "2025-08-09", "start": "09:00", "end": "09:55", "duration_hours": 0.91}, {"date": "2025-08-09", "start": "11:03", "end": "11:05", "duration_hours": 0.03}, {"date": "2025-08-10", "start": "10:54", "end": "12:49", "duration_hours": 1.91}, {"date": "2025-08-14", "start": "09:23", "end": "09:37", "duration_hours": 0.23}, {"date": "2025-08-16", "start": "00:07", "end": "08:26", "duration_hours": 8.32}, {"date": "2025-08-16", "start": "09:50", "end": "10:58", "duration_hours": 1.14}, {"date": "2025-08-24", "start": "00:51", "end": "03:54", "duration_hours": 3.05}, {"date": "2025-08-27", "start": "23:36", "end": "08:06", "duration_hours": 8.5}, {"date": "2025-09-01", "start": "00:08", "end": "09:19", "duration_hours": 9.18}, {"date": "2025-09-01", "start": "22:31", "end": "07:42", "duration_hours": 9.19}, {"date": "2025-09-03", "start": "00:25", "end": "09:10", "duration_hours": 8.75}, {"date": "2025-09-04", "start": "01:57", "end": "07:58", "duration_hours": 6.0}, {"date": "2025-09-08", "start": "19:29", "end": "20:07", "duration_hours": 0.64}, {"date": "2025-09-26", "start": "00:48", "end": "06:57", "duration_hours": 6.14}, {"date": "2025-09-27", "start": "00:03", "end": "12:43", "duration_hours": 12.67}, {"date": "2025-09-30", "start": "00:45", "end": "04:13", "duration_hours": 3.48}, {"date": "2025-10-06", "start": "03:18", "end": "05:46", "duration_hours": 2.46}, {"date": "2025-10-12", "start": "23:43", "end": "05:41", "duration_hours": 5.96}, {"date": "2025-10-17", "start": "01:07", "end": "06:11", "duration_hours": 5.07}, {"date": "2025-10-30", "start": "05:17", "end": "14:40", "duration_hours": 9.38}, {"date": "2025-11-06", "start": "02:08", "end": "09:25", "duration_hours": 7.28}, {"date": "2025-11-13", "start": "02:04", "end": "09:03", "duration_hours": 7.0}, {"date": "2025-11-15", "start": "23:25", "end": "05:40", "duration_hours": 6.26}, {"date": "2025-11-23", "start": "23:01", "end": "09:44", "duration_hours": 10.72}, {"date": "2025-11-26", "start": "02:09", "end": "05:29", "duration_hours": 3.34}, {"date": "2025-11-29", "start": "03:55", "end": "09:11", "duration_hours": 5.28}, {"date": "2025-11-30", "start": "06:01", "end": "13:20", "duration_hours": 7.32}, {"date": "2025-12-04", "start": "01:19", "end": "06:11", "duration_hours": 4.88}, {"date": "2025-12-05", "start": "00:47", "end": "11:21", "duration_hours": 10.56}, {"date": "2025-12-07", "start": "02:11", "end": "11:14", "duration_hours": 9.05}, {"date": "2025-12-08", "start": "10:00", "end": "16:47", "duration_hours": 6.78}, {"date": "2025-12-23", "start": "01:25", "end": "05:59", "duration_hours": 4.57}, {"date": "2025-12-24", "start": "23:10", "end": "06:00", "duration_hours": 6.83}, {"date": "2025-12-25", "start": "23:17", "end": "05:28", "duration_hours": 6.19}, {"date": "2026-01-07", "start": "18:53", "end": "19:09", "duration_hours": 0.26}, {"date": "2026-02-19", "start": "19:50", "end": "02:48", "duration_hours": 6.96}, {"date": "2026-02-23", "start": "10:52", "end": "22:06", "duration_hours": 11.23}, {"date": "2026-02-24", "start": "12:20", "end": "14:51", "duration_hours": 2.51}, {"date": "2026-03-13", "start": "02:49", "end": "09:21", "duration_hours": 6.54}, {"date": "2026-03-17", "start": "03:21", "end": "07:29", "duration_hours": 4.13}, {"date": "2026-03-18", "start": "10:16", "end": "11:02", "duration_hours": 0.76}, {"date": "2026-03-18", "start": "14:00", "end": "17:57", "duration_hours": 3.95}, {"date": "2026-03-29", "start": "03:43", "end": "08:15", "duration_hours": 4.54}, {"date": "2026-03-30", "start": "01:07", "end": "07:07", "duration_hours": 6.01}, {"date": "2026-04-01", "start": "03:50", "end": "07:07", "duration_hours": 3.28}, {"date": "2026-04-01", "start": "13:27", "end": "13:54", "duration_hours": 0.44}, {"date": "2026-04-02", "start": "09:02", "end": "12:31", "duration_hours": 3.49}, {"date": "2026-04-05", "start": "23:54", "end": "04:21", "duration_hours": 4.46}, {"date": "2026-04-07", "start": "01:36", "end": "05:54", "duration_hours": 4.29}, {"date": "2026-04-08", "start": "23:16", "end": "03:05", "duration_hours": 3.83}, {"date": "2026-04-10", "start": "02:46", "end": "07:07", "duration_hours": 4.35}, {"date": "2026-04-11", "start": "00:08", "end": "06:06", "duration_hours": 5.96}, {"date": "2026-04-13", "start": "10:44", "end": "11:45", "duration_hours": 1.01}, {"date": "2026-04-25", "start": "00:03", "end": "05:52", "duration_hours": 5.82}, {"date": "2026-05-08", "start": "03:18", "end": "16:35", "duration_hours": 13.29}, {"date": "2026-05-09", "start": "02:58", "end": "07:20", "duration_hours": 4.36}, {"date": "2026-05-15", "start": "01:20", "end": "06:06", "duration_hours": 4.78}, {"date": "2026-05-15", "start": "10:22", "end": "13:20", "duration_hours": 2.96}, {"date": "2026-05-16", "start": "01:33", "end": "07:14", "duration_hours": 5.69}, {"date": "2026-05-16", "start": "07:38", "end": "11:46", "duration_hours": 4.12}, {"date": "2026-05-17", "start": "04:00", "end": "10:16", "duration_hours": 6.25}, {"date": "2026-05-18", "start": "04:46", "end": "09:16", "duration_hours": 4.5}, {"date": "2026-05-18", "start": "18:46", "end": "23:01", "duration_hours": 4.24}, {"date": "2026-05-21", "start": "02:46", "end": "08:12", "duration_hours": 5.43}, {"date": "2026-05-22", "start": "22:49", "end": "06:10", "duration_hours": 7.34}, {"date": "2026-05-26", "start": "19:48", "end": "07:24", "duration_hours": 11.6}, {"date": "2026-05-30", "start": "09:20", "end": "09:41", "duration_hours": 0.35}, {"date": "2026-05-31", "start": "01:18", "end": "07:26", "duration_hours": 6.14}, {"date": "2026-06-07", "start": "12:15", "end": "14:23", "duration_hours": 2.13}, {"date": "2026-06-07", "start": "22:17", "end": "09:01", "duration_hours": 10.73}, {"date": "2026-06-11", "start": "08:07", "end": "12:15", "duration_hours": 4.13}, {"date": "2026-06-14", "start": "18:43", "end": "00:28", "duration_hours": 5.75}, {"date": "2026-06-16", "start": "00:04", "end": "08:26", "duration_hours": 8.38}, {"date": "2026-06-16", "start": "16:09", "end": "22:34", "duration_hours": 6.42}, {"date": "2026-06-16", "start": "23:45", "end": "05:15", "duration_hours": 5.5}, {"date": "2026-06-21", "start": "01:10", "end": "08:41", "duration_hours": 7.52}, {"date": "2026-06-26", "start": "19:31", "end": "21:14", "duration_hours": 1.71}, {"date": "2026-06-29", "start": "08:11", "end": "12:46", "duration_hours": 4.57}, {"date": "2026-06-29", "start": "18:22", "end": "18:57", "duration_hours": 0.6}, {"date": "2026-06-29", "start": "20:47", "end": "02:34", "duration_hours": 5.78}, {"date": "2026-07-01", "start": "07:28", "end": "20:03", "duration_hours": 12.59}, {"date": "2026-07-02", "start": "14:28", "end": "18:46", "duration_hours": 4.29}, {"date": "2026-07-02", "start": "20:12", "end": "20:34", "duration_hours": 0.37}, {"date": "2026-07-04", "start": "10:32", "end": "11:19", "duration_hours": 0.79}, {"date": "2026-07-05", "start": "03:48", "end": "07:32", "duration_hours": 3.73}, {"date": "2026-07-10", "start": "04:18", "end": "08:22", "duration_hours": 4.07}, {"date": "2026-07-11", "start": "16:11", "end": "18:23", "duration_hours": 2.2}, {"date": "2026-07-12", "start": "19:28", "end": "05:18", "duration_hours": 9.83}, {"date": "2026-07-16", "start": "12:06", "end": "19:18", "duration_hours": 7.2}, {"date": "2026-07-17", "start": "15:42", "end": "20:27", "duration_hours": 4.77}, {"date": "2026-07-21", "start": "03:10", "end": "03:57", "duration_hours": 0.8}, {"date": "2026-07-21", "start": "20:41", "end": "06:07", "duration_hours": 9.44}, {"date": "2026-07-23", "start": "22:50", "end": "07:14", "duration_hours": 8.41}, {"date": "2026-07-24", "start": "09:26", "end": "11:29", "duration_hours": 2.05}, {"date": "2026-07-24", "start": "14:21", "end": "00:06", "duration_hours": 9.75}, {"date": "2026-08-19", "start": "07:18", "end": "09:10", "duration_hours": 1.87}, {"date": "2026-08-19", "start": "17:05", "end": "20:31", "duration_hours": 3.43}, {"date": "2026-08-21", "start": "02:05", "end": "05:58", "duration_hours": 3.9}, {"date": "2026-08-23", "start": "10:47", "end": "15:37", "duration_hours": 4.84}, {"date": "2026-08-23", "start": "18:43", "end": "21:14", "duration_hours": 2.51}, {"date": "2026-08-24", "start": "00:35", "end": "11:09", "duration_hours": 10.57}, {"date": "2026-08-27", "start": "22:56", "end": "08:35", "duration_hours": 9.64}, {"date": "2026-09-04", "start": "07:39", "end": "11:20", "duration_hours": 3.68}, {"date": "2026-09-14", "start": "01:30", "end": "07:16", "duration_hours": 5.77}, {"date": "2026-09-14", "start": "19:37", "end": "20:01", "duration_hours": 0.4}, {"date": "2026-09-16", "start": "20:45", "end": "22:16", "duration_hours": 1.52}, {"date": "2026-09-17", "start": "11:49", "end": "12:02", "duration_hours": 0.21}, {"date": "2026-09-18", "start": "01:48", "end": "07:43", "duration_hours": 5.92}, {"date": "2026-09-19", "start": "20:37", "end": "21:36", "duration_hours": 0.99}, {"date": "2026-09-23", "start": "04:51", "end": "09:02", "duration_hours": 4.18}, {"date": "2026-09-24", "start": "03:27", "end": "08:03", "duration_hours": 4.59}, {"date": "2026-09-26", "start": "03:01", "end": "05:34", "duration_hours": 2.55}, {"date": "2026-09-26", "start": "20:02", "end": "22:11", "duration_hours": 2.15}, {"date": "2026-09-28", "start": "03:17", "end": "09:01", "duration_hours": 5.74}, {"date": "2026-10-01", "start": "11:30", "end": "12:09", "duration_hours": 0.66}]
+        };
+
+        const layoutBase = {
+            paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+            font: {color: '#e0e0e0', family: 'Segoe UI'},
+            margin: {t: 30, b: 50, l: 60, r: 20}
+        };
+        const gridCol = 'rgba(255,255,255,0.1)';
+
+        Plotly.newPlot('timeline', [{
+            x: Object.keys(data.daily), y: Object.values(data.daily).map(x => x.count),
+            type: 'scatter', mode: 'lines+markers', line: {color: '#ff6b6b', width: 2}, marker: {size: 4}
+        }], Object.assign({}, layoutBase, {
+            xaxis: {title: 'Дата', gridcolor: gridCol, rangeslider: {thickness: 0.1}},
+            yaxis: {title: 'Кол-во оповещений', gridcolor: gridCol}
+        }), {responsive: true});
+
+        Plotly.newPlot('candle', [{
+            x: data.candles.map(c => c.date),
+            open: data.candles.map(c => c.open), close: data.candles.map(c => c.close),
+            high: data.candles.map(c => c.high), low: data.candles.map(c => c.low),
+            type: 'candlestick',
+            increasing: {line: {color: '#4ade80'}, fillcolor: '#4ade80'},
+            decreasing: {line: {color: '#ef4444'}, fillcolor: '#ef4444'},
+            hovertemplate: '<b>Неделя от %{x}</b><br>Пн-Ср: %{open} соб.<br>Чт-Вс: %{close} соб.<br>Пиковый день: %{high} соб.<br>Спокойный день: %{low} соб.<extra></extra>'
+        }], Object.assign({}, layoutBase, {
+            xaxis: {title: 'Начало недели', gridcolor: gridCol},
+            yaxis: {title: 'Событий', gridcolor: gridCol}
+        }), {responsive: true});
+
+        Plotly.newPlot('hourly', [{
+            x: Array.from({length: 24}, (_, i) => i), y: data.hourly, type: 'bar',
+            marker: {color: data.hourly.map((_, i) => [22,23,0,1,2,3,4,5].includes(i) ? '#ef4444' : '#4ade80')},
+            hovertemplate: 'Час: %{x}:00<br>Оповещений: %{y}<extra></extra>'
+        }], Object.assign({}, layoutBase, {
+            xaxis: {title: 'Час суток', dtick: 2, gridcolor: gridCol},
+            yaxis: {title: 'Количество', gridcolor: gridCol}
+        }), {responsive: true});
+
+        Plotly.newPlot('weekday', [{
+            x: data.wdNames, y: data.wd, type: 'bar', marker: {color: '#9b59b6'},
+            hovertemplate: 'День: %{x}<br>Оповещений: %{y}<extra></extra>'
+        }], Object.assign({}, layoutBase, {
+            xaxis: {title: 'День', gridcolor: gridCol}, yaxis: {title: 'Количество', gridcolor: gridCol}
+        }), {responsive: true});
+
+        Plotly.newPlot('events', [{
+            y: data.evLabels, x: data.evVals, type: 'bar', orientation: 'h', marker: {color: '#3498db'},
+            hovertemplate: '%{y}<br>Кол-во: %{x}<extra></extra>'
+        }], Object.assign({}, layoutBase, {
+            xaxis: {title: 'Количество', gridcolor: gridCol}, yaxis: {automargin: true}, margin: {t: 30, b: 50, l: 250, r: 20}
+        }), {responsive: true});
+
+        if (data.sessions.length > 0) {
+            Plotly.newPlot('sessChart', [{
+                x: data.sessions.map(s => s.date), y: data.sessions.map(s => s.duration_hours), type: 'bar',
+                marker: {color: data.sessions.map(s => s.duration_hours > 10 ? '#ef4444' : (s.duration_hours > 5 ? '#f39c12' : '#4ade80'))},
+                hovertemplate: 'Дата: %{x}<br>Длительность: %{y} ч.<extra></extra>'
+            }], Object.assign({}, layoutBase, {
+                xaxis: {title: 'Дата', gridcolor: gridCol}, yaxis: {title: 'Часов', gridcolor: gridCol}
+            }), {responsive: true});
+        }
+
+        Plotly.newPlot('downed', [{
+            x: Object.keys(data.downed), y: Object.values(data.downed), type: 'bar', marker: {color: '#c0392b'},
+            hovertemplate: 'Дата: %{x}<br>Сбито: %{y}<extra></extra>'
+        }], Object.assign({}, layoutBase, {
+            xaxis: {title: 'Дата', gridcolor: gridCol, rangeslider: {thickness: 0.1}},
+            yaxis: {title: 'Сбито БПЛА', gridcolor: gridCol}
+        }), {responsive: true});
+    </script>
+</body>
+</html>
